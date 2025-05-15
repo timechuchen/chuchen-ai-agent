@@ -2,13 +2,17 @@ package com.chuchen.chuchenaiagent.app;
 
 import com.chuchen.chuchenaiagent.advisor.MyLoggerAdvisor;
 import com.chuchen.chuchenaiagent.chatmemory.FileBasedChatMemory;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -19,14 +23,18 @@ import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvis
 /**
  * @author chuchen
  * @date 2025/5/2 13:54
- * <br>
- * App 后段，这里以 love（恋爱app） 为例
+ * @description App 后端，这里以 love（恋爱app） 为例
  */
 @Component
 @Slf4j
 public class LoveApp {
 
     private final ChatClient chatClient;
+
+    @Resource
+    private VectorStore loveAppVectorStore;
+    @Resource
+    private Advisor loveAppRagCloudAdvisor;
 
     // 系统预设
     private static final String SYSTEM_PROMPT = "扮演深耕恋爱心理领域的专家。开场向用户表明身份，告知用户可倾诉恋爱难题。" +
@@ -103,4 +111,29 @@ public class LoveApp {
         return loveReport;
     }
 
+    /**
+     * 和 RAG 知识库进行对话
+     * @param message 用户发送的消息
+     * @param chatId 会话 ID
+     * @return AI 的回复
+     */
+    public String doChatWithRag(String message, String chatId) {
+        ChatResponse response = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .advisors(new MyLoggerAdvisor()) // 开启日志
+//                .advisors(new QuestionAnswerAdvisor(loveAppVectorStore)) // 使用 RAG 知识库问答
+                .advisors(loveAppRagCloudAdvisor) // 应用 RAG 检索增强服务（基于云知识库）
+                .call()
+                .chatResponse();
+
+        String content = null;
+        if (response != null) {
+            content = response.getResult().getOutput().getText();
+        }
+        log.info("content: {}", content);
+        return content;
+    }
 }
