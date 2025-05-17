@@ -2,6 +2,8 @@ package com.chuchen.chuchenaiagent.app;
 
 import com.chuchen.chuchenaiagent.advisor.MyLoggerAdvisor;
 import com.chuchen.chuchenaiagent.chatmemory.FileBasedChatMemory;
+import com.chuchen.chuchenaiagent.rag.LoveAppRagCustomAdvisorFactory;
+import com.chuchen.chuchenaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -35,6 +37,10 @@ public class LoveApp {
     private VectorStore loveAppVectorStore;
     @Resource
     private Advisor loveAppRagCloudAdvisor;
+    @Resource
+    private VectorStore pgVectorVectorStore;
+    @Resource
+    private QueryRewriter queryRewriter;
 
     // 系统预设
     private static final String SYSTEM_PROMPT = "扮演深耕恋爱心理领域的专家。开场向用户表明身份，告知用户可倾诉恋爱难题。" +
@@ -118,14 +124,21 @@ public class LoveApp {
      * @return AI 的回复
      */
     public String doChatWithRag(String message, String chatId) {
+        // 对用户输入的消息进行重写
+        String rewriterMessage = queryRewriter.doQueryRewrite(message);
+
         ChatResponse response = chatClient
                 .prompt()
-                .user(message)
+                .user(rewriterMessage)
                 .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
                 .advisors(new MyLoggerAdvisor()) // 开启日志
 //                .advisors(new QuestionAnswerAdvisor(loveAppVectorStore)) // 使用 RAG 知识库问答
-                .advisors(loveAppRagCloudAdvisor) // 应用 RAG 检索增强服务（基于云知识库）
+//                .advisors(loveAppRagCloudAdvisor) // 应用 RAG 检索增强服务（基于云知识库）
+//                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore)) // 基于 pgVector 向量数据库检索
+                .advisors(
+                        LoveAppRagCustomAdvisorFactory.createLoveAppRagCustomAdvisor(loveAppVectorStore, "已婚") // 自定义 RAG 检索增强服务（基于本地知识库）
+                )
                 .call()
                 .chatResponse();
 
