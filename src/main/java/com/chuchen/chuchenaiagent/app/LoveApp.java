@@ -14,6 +14,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
@@ -41,6 +42,8 @@ public class LoveApp {
     private VectorStore pgVectorVectorStore;
     @Resource
     private QueryRewriter queryRewriter;
+    @Resource
+    private ToolCallback[] allTools;
 
     // 系统预设
     private static final String SYSTEM_PROMPT = "扮演深耕恋爱心理领域的专家。开场向用户表明身份，告知用户可倾诉恋爱难题。" +
@@ -139,6 +142,31 @@ public class LoveApp {
                 .advisors(
                         LoveAppRagCustomAdvisorFactory.createLoveAppRagCustomAdvisor(loveAppVectorStore, "已婚") // 自定义 RAG 检索增强服务（基于本地知识库）
                 )
+                .call()
+                .chatResponse();
+
+        String content = null;
+        if (response != null) {
+            content = response.getResult().getOutput().getText();
+        }
+        log.info("content: {}", content);
+        return content;
+    }
+
+    /**
+     * AI 恋爱报告功能（支持调用工具）
+     * @param message 用户发送的消息
+     * @param chatId 用户会话 ID
+     * @return 返回 AI 的回复
+     */
+    public String doChatWithTools(String message, String chatId) {
+        ChatResponse response = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .advisors(new MyLoggerAdvisor()) // 开启日志，便于观察效果
+                .tools(allTools)
                 .call()
                 .chatResponse();
 
