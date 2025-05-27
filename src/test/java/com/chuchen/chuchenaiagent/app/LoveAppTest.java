@@ -7,8 +7,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * @author chuchen
  * @date 2025/5/2 14:10
@@ -84,5 +82,23 @@ class LoveAppTest {
         String answer = loveApp.doChatWithTools(message, chatId);
         Assertions.assertNotNull(answer);
         return answer;
+    }
+
+    @Test
+    void doChatWithMcp() {
+        String chatId = UUID.randomUUID().toString();
+        // 测试地图 MCP
+        String message = "我的另一半居住在西安市雁塔区，请帮我找到 5 公里内合适的约会地点，要最新的搜索消息，并且帮我搜索周边的照片";
+        String answer =  loveApp.doChatWithMcp(message, chatId);
+        Assertions.assertNotNull(answer);
+    }
+
+    @Test
+    void doChatWithMcp1() {
+        String chatId = UUID.randomUUID().toString();
+        // 测试图片搜索 MCP
+        String message = "请帮我搜索一些懒羊羊的图片";
+        String answer =  loveApp.doChatWithMcp(message, chatId);
+        Assertions.assertNotNull(answer);
     }
 }
