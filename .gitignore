@@ -1,7 +1,6 @@
 ### CUSTOM ###
 application-local.yml
 tmp
-src/main/resources/mcp-servers-local.json
 
 HELP.md
 target/
@@ -36,3 +35,4 @@ build/
 
 ### VS Code ###
 .vscode/
+src/main/resources/mcp-servers-local.json
