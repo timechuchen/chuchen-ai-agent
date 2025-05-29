@@ -32,6 +32,7 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+chuchen-ai-agent-frontend/node_modules
 
 ### VS Code ###
 .vscode/
