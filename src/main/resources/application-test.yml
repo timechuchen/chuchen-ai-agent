@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: chuchen-ai-agent
+  datasource:
+    url: {}
+    username: {username}
+    password: {password}
+  ai:
+    dashscope:
+      api-key: {阿里云百炼 api-key}
+      chat:
+        options:
+          model: qwen-plus
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        dimensions: 1536
+        distance-type: COSINE_DISTANCE
+        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+    mcp:
+      client:
+#        sse:
+#          connections:
+#            server1:
+#              url: http://localhost:8123
+        stdio:
+          servers-configuration: classpath:mcp-servers-test.json
+
+#    ollama:
+#      base-url: http://localhost:11434
+#      chat:
+#        model: {model_name}
+# search api
+search-api:
+  api-key: {}
