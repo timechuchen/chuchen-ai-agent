@@ -7,9 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author chuchen
@@ -86,6 +89,90 @@ public abstract class BaseAgent {
         }finally {
             cleanup();
         }
+    }
+
+    /**
+     * 执行代理（流式输出）
+     *
+     * @param userPrompt 用户提示词
+     * @return 调用结果
+     */
+    public SseEmitter runStream(String userPrompt) {
+        // 创建一个时间较长的 SSE 发射器
+        SseEmitter emitter = new SseEmitter(360000L);
+        // 异步运行，避免阻塞主线程
+        CompletableFuture.runAsync(() -> {
+            try {
+                if(this.state != AgentState.IDLE) {
+                    emitter.send("Cannot run agent in state: " + this.state);
+                    emitter.complete();
+                    return;
+                }
+                if(StrUtil.isBlank(userPrompt)) {
+                    emitter.send("Cannot run agent with empty user prompt.");
+                    emitter.complete();
+                    return;
+                }
+            }catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+
+            // 执行
+            this.state = AgentState.RUNNING;
+            // 记录消息上下文
+            messageList.add(new UserMessage(userPrompt));
+            // 定义结果列表
+            List<String> results = new ArrayList<>();
+            // 执行循环
+            try{
+                for(int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
+                    int stemNumber = i + 1;
+                    currentStep = stemNumber;
+                    log.info("Executing step {} / {}", stemNumber, maxSteps);
+                    // 单步执行，得到结果
+                    String stepResult = step();
+                    String result = "Step " + stemNumber + ": " + stepResult;
+                    results.add(result);
+                    // 输出当前每一步的结果到 SSE 流中
+                    emitter.send(result);
+                }
+
+                // 是否超出最大步骤限制
+                if(currentStep == maxSteps) {
+                    state = AgentState.FINISHED;
+                    results.add("Terminated: Reached max steps (" + maxSteps + ")");
+                    emitter.send("执行结束: 达到最大步骤 (" + maxSteps + ")");
+                }
+                // 正常完成
+                emitter.complete();
+            }catch (Exception e) {
+                log.error("Error executing agent", e);
+                state = AgentState.ERROR;
+                try {
+                    emitter.send("执行错误" + e.getMessage());
+                    emitter.complete();
+                } catch (IOException ex) {
+                    emitter.completeWithError(ex);
+                }
+                results.add("Error executing agent: " + e.getMessage());
+            }finally {
+                cleanup();
+            }
+        });
+        // 设置超时回调
+        emitter.onTimeout(() -> {
+            this.state = AgentState.ERROR;
+            log.warn("SSE emitter timeout");
+            this.cleanup();
+        });
+        emitter.onCompletion(() -> {
+            if(this.state == AgentState.RUNNING) {
+                this.state = AgentState.FINISHED;
+            }
+            log.info("SSE emitter completed");
+            this.cleanup();
+        });
+        return emitter;
     }
 
     /**

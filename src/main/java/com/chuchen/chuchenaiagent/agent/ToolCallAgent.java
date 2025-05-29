@@ -19,6 +19,7 @@ import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,7 +40,7 @@ public class ToolCallAgent extends ReActAgent{
     private ChatResponse toolCallChatResponse;
 
 //    @Resource
-//    private ToolCallbackProvider toolCallbackProvider;
+    private ToolCallbackProvider toolCallbackProvider;
 
     // 工具调用管理者
     private final ToolCallingManager toolCallingManager;
@@ -47,9 +48,10 @@ public class ToolCallAgent extends ReActAgent{
     // 禁用 SpringAI 内部的工具调用机制，自己维护选项和消息上下文
     private final ChatOptions chatOptions;
 
-    public ToolCallAgent(ToolCallback[] availableTools) {
+    public ToolCallAgent(ToolCallback[] availableTools, ToolCallbackProvider toolCallbackProvider) {
         super();
         this.availableTools = availableTools;
+        this.toolCallbackProvider = toolCallbackProvider;
         this.toolCallingManager = ToolCallingManager.builder().build();
         this.chatOptions = DashScopeChatOptions.builder()
                 .withProxyToolCalls(true)
@@ -75,7 +77,7 @@ public class ToolCallAgent extends ReActAgent{
                     .prompt(prompt)
                     .system(getSystemPrompt())
                     .tools(availableTools)
-//                    .tools(toolCallbackProvider) // 加入 MCP 工具
+                    .tools(toolCallbackProvider) // 加入 MCP 工具
                     .call()
                     .chatResponse();
             // 记录响应，用于等下 Act
@@ -128,7 +130,7 @@ public class ToolCallAgent extends ReActAgent{
             setState(AgentState.FINISHED);
         }
         String results = toolResponseMessage.getResponses().stream()
-                .map(response -> "工具" + getName() + "返回的结果" + response.responseData())
+                .map(response -> response.responseData())
                 .collect(Collectors.joining("\n"));
         log.info(results);
         return results;

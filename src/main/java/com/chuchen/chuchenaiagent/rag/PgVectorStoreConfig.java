@@ -22,7 +22,7 @@ import static org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexT
 public class PgVectorStoreConfig {
 
     @Resource
-    private LoveAppDocumentLoader loveAppDocumentLoader;
+    private TourismAppDocumentLoader tourismAppDocumentLoader;
 
     @Bean
     public VectorStore pgVectorVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel dashscopeEmbeddingModel) {
@@ -37,7 +37,7 @@ public class PgVectorStoreConfig {
                 .build();
 
         // 加载文档
-        List<Document> documents = loveAppDocumentLoader.loadMarkers();
+        List<Document> documents = tourismAppDocumentLoader.loadMarkers();
         pgVectorStore.add(documents);
         return pgVectorStore;
     }

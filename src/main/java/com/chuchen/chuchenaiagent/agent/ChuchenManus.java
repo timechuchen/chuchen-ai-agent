@@ -4,6 +4,7 @@ import com.chuchen.chuchenaiagent.advisor.MyLoggerAdvisor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,8 +15,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ChuchenManus extends ToolCallAgent{
 
-    public ChuchenManus(ToolCallback[] availableTools, ChatModel dashscopeChatModel) {
-        super(availableTools);
+    public ChuchenManus(ToolCallback[] availableTools, ToolCallbackProvider toolCallbackProvider, ChatModel dashscopeChatModel) {
+        super(availableTools, toolCallbackProvider);
         this.setName("chuchenManus");
         String SYSTEM_PROMPT = """
                 You are ChuchenManus, an all-capable AI assistant, aimed at solving any task presented by the user.
@@ -29,7 +30,7 @@ public class ChuchenManus extends ToolCallAgent{
                 If you want to stop the interaction at any point, use the `terminate` tool/function call.
                 """;
         this.setNextStepPrompt(NEXT_STEP_PROMPT);
-        this.setMaxSteps(20);
+        this.setMaxSteps(10);
         // 初始化客户端
         ChatClient chatClient = ChatClient.builder(dashscopeChatModel)
                 .defaultAdvisors(new MyLoggerAdvisor())
